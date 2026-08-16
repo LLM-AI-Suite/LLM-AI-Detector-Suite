@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM-Botnet Detectiesysteem — Projectdocumentatie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #10141A;
+    --ink-soft: #171D25;
+    --paper: #F7F8F7;
+    --accent: #16846C;
+    --accent-bright: #22B896;
+    --amber: #C2740A;
+    --red: #C0392B;
+    --blue: #4C7FD6;
+    --line: rgba(255,255,255,0.09);
+    --line-soft: rgba(16,20,26,0.10);
+    --text-dim: #8B98A5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ink);
+    color: #E7ECF0;
+    font-family: 'IBM Plex Sans', sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .display { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.01em; }
+  code, .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  a { color: var(--accent-bright); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(16,20,26,0.88); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  .nav-brand { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; color: #E7ECF0; }
+  .nav-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 10px var(--accent-bright); }
+  .nav-links { display: flex; gap: 28px; font-size: 0.88rem; }
+  .nav-links a { color: var(--text-dim); }
+  .nav-links a:hover { color: #E7ECF0; text-decoration: none; }
+
+  /* ── Hero ── */
+  .hero { padding: 84px 0 64px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--accent-bright); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 18px; display: block; }
+  .hero h1 { font-size: 3.1rem; font-weight: 600; line-height: 1.08; max-width: 780px; color: #F4F6F5; }
+  .hero .sub { font-size: 1.15rem; color: var(--text-dim); margin-top: 20px; max-width: 620px; }
+
+  /* ── Interactive correlation demo ── */
+  .demo {
+    margin-top: 48px; background: var(--ink-soft); border: 1px solid var(--line); border-radius: 14px;
+    padding: 32px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 36px;
+  }
+  .demo-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+  .signal-toggle {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; margin-bottom: 8px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .signal-toggle:hover { border-color: var(--accent); background: rgba(34,184,150,0.06); }
+  .signal-toggle.active { border-color: var(--accent-bright); background: rgba(34,184,150,0.12); }
+  .signal-toggle .name { font-size: 0.92rem; font-weight: 500; }
+  .signal-toggle .score { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; color: var(--text-dim); }
+  .switch { width: 34px; height: 19px; border-radius: 10px; background: rgba(255,255,255,0.15); position: relative; flex-shrink: 0; margin-left: 12px; transition: background 0.15s; }
+  .signal-toggle.active .switch { background: var(--accent-bright); }
+  .switch::after { content: ''; position: absolute; width: 15px; height: 15px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: left 0.15s; }
+  .signal-toggle.active .switch::after { left: 17px; }
+
+  .verdict-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-left: 1px solid var(--line); padding-left: 36px; }
+  .verdict-score { font-family: 'Space Grotesk', sans-serif; font-size: 4.2rem; font-weight: 700; line-height: 1; transition: color 0.3s; }
+  .verdict-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; letter-spacing: 0.06em; margin-top: 8px; padding: 5px 14px; border-radius: 20px; transition: all 0.3s; }
+  .verdict-formula { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--text-dim); margin-top: 22px; }
+  .verdict-note { font-size: 0.82rem; color: var(--text-dim); margin-top: 14px; max-width: 220px; }
+
+  @media (max-width: 760px) {
+    .demo { grid-template-columns: 1fr; }
+    .verdict-panel { border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 28px; }
+    .hero h1 { font-size: 2.2rem; }
+  }
+
+  /* ── Sections ── */
+  section { padding: 72px 0; border-bottom: 1px solid var(--line); }
+  section h2 { font-size: 1.9rem; font-weight: 600; color: #F4F6F5; margin-bottom: 14px; }
+  .section-intro { color: var(--text-dim); max-width: 640px; margin-bottom: 40px; font-size: 1.02rem; }
+
+  /* ── Threat narrative ── */
+  .threat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .threat-card { background: var(--ink-soft); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+  .threat-card .icon { font-family: 'IBM Plex Mono', monospace; color: var(--red); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .threat-card h3 { font-size: 1.05rem; margin-bottom: 8px; color: #F4F6F5; font-weight: 600; }
+  .threat-card p { font-size: 0.92rem; color: var(--text-dim); }
+
+  /* ── Layers ── */
+  .layers { display: flex; flex-direction: column; gap: 2px; }
+  .layer-row {
+    display: grid; grid-template-columns: 60px 200px 1fr 160px; gap: 20px; align-items: center;
+    padding: 20px 22px; background: var(--ink-soft); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px;
+  }
+  .layer-num { font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--accent-bright); opacity: 0.55; }
+  .layer-name { font-weight: 600; font-size: 0.98rem; }
+  .layer-desc { font-size: 0.88rem; color: var(--text-dim); }
+  .layer-file { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--text-dim); text-align: right; }
+  @media (max-width: 760px) {
+    .layer-row { grid-template-columns: 1fr; text-align: left; gap: 6px; }
+    .layer-file { text-align: left; }
+  }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 28px; border-left: 2px solid var(--line); }
+  .tl-item { position: relative; margin-bottom: 32px; }
+  .tl-item::before { content: ''; position: absolute; left: -34px; top: 4px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 0 4px var(--ink); }
+  .tl-item .tl-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--accent-bright); text-transform: uppercase; letter-spacing: 0.05em; }
+  .tl-item h3 { font-size: 1.05rem; margin: 4px 0 6px; font-weight: 600; }
+  .tl-item p { font-size: 0.9rem; color: var(--text-dim); max-width: 640px; }
+
+  /* ── Proof stats ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-card { background: var(--ink-soft); border: 1px solid var(--line); border-radius: 12px; padding: 22px; text-align: center; }
+  .stat-card .num { font-family: 'Space Grotesk', sans-serif; font-size: 2.1rem; font-weight: 700; color: var(--accent-bright); }
+  .stat-card .lbl { font-size: 0.8rem; color: var(--text-dim); margin-top: 6px; }
+  @media (max-width: 760px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .bug-table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 0.88rem; }
+  .bug-table th { text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase; color: var(--text-dim); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .bug-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: #D5DCE2; vertical-align: top; }
+
+  /* ── Documents ── */
+  .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .doc-card {
+    background: var(--ink-soft); border: 1px solid var(--line); border-radius: 12px; padding: 22px;
+    display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s;
+  }
+  .doc-card:hover { border-color: var(--accent-bright); }
+  .doc-card .doc-type { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.05em; }
+  .doc-card h3 { font-size: 1rem; font-weight: 600; }
+  .doc-card p { font-size: 0.85rem; color: var(--text-dim); flex-grow: 1; }
+  @media (max-width: 760px) { .doc-grid { grid-template-columns: 1fr; } }
+
+  /* ── Status ── */
+  .status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .status-row { display: flex; align-items: center; gap: 14px; background: var(--ink-soft); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .status-row .txt h4 { font-size: 0.92rem; font-weight: 600; }
+  .status-row .txt p { font-size: 0.8rem; color: var(--text-dim); }
+  @media (max-width: 760px) { .status-grid { grid-template-columns: 1fr; } }
+
+  /* ── Story link banner ── */
+  .story-banner {
+    background: linear-gradient(135deg, #1b0f0f 0%, var(--ink-soft) 100%);
+    border: 1px solid rgba(192,57,43,0.35); border-radius: 14px; padding: 36px 40px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+  .story-banner h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; margin-bottom: 8px; }
+  .story-banner p { color: var(--text-dim); font-size: 0.92rem; max-width: 440px; }
+  .btn { display: inline-block; background: var(--accent-bright); color: #08110E; font-weight: 600; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; white-space: nowrap; }
+  .btn:hover { background: #2fd1ac; text-decoration: none; }
+  @media (max-width: 760px) { .story-banner { flex-direction: column; align-items: flex-start; } }
+
+  /* ── Contribute note ── */
+  .note-box { background: rgba(76,127,214,0.08); border: 1px solid rgba(76,127,214,0.3); border-radius: 12px; padding: 22px 26px; font-size: 0.92rem; color: #C9D6EA; }
+
+  footer { padding: 40px 0; text-align: center; color: var(--text-dim); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="nav-brand"><span class="dot"></span> LLM-Botnet Detectiesysteem</div>
+    <div class="nav-links">
+      <a href="#dreiging">Dreiging</a>
+      <a href="#architectuur">Architectuur</a>
+      <a href="#reis">De reis</a>
+      <a href="#bewijs">Bewijs</a>
+      <a href="#documenten">Documenten</a>
+      <a href="#status">Status</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Projectdocumentatie — bijgewerkt augustus 2026</span>
+    <h1>Eén signaal is ruis.<br>Vier signalen zijn bewijs.</h1>
+    <p class="sub">Een gedistribueerd LLM-botnet heeft geen centrale server om te blokkeren en geen vaste vingerafdruk om te herkennen. Dit systeem detecteert het toch — door gedrag te correleren in plaats van inhoud te herkennen. Schuif hieronder zelf met de signalen.</p>
+
+    <div class="demo">
+      <div>
+        <div class="demo-label">Zet signalen aan/uit</div>
+        <div id="signals"></div>
+      </div>
+      <div class="verdict-panel">
+        <div class="verdict-score" id="verdictScore">0.0</div>
+        <div class="verdict-label" id="verdictLabel">LAAG</div>
+        <div class="verdict-formula" id="verdictFormula">basis 0 × multiplier 1.0</div>
+        <div class="verdict-note">Zelfde rekenformule als <code>correlation_engine.py</code> — exponentiële escalatie bij meerdere gelijktijdige signalen.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="dreiging">
+  <div class="wrap">
+    <h2>De dreiging</h2>
+    <p class="section-intro">Het project ontstond uit berichtgeving over een AI-agent die zijn testomgeving ontvluchtte. De vraag die daaruit volgde: wat als zoiets zich niet als één uitbraak voordoet, maar als een stil, gedistribueerd netwerk?</p>
+    <div class="threat-grid">
+      <div class="threat-card">
+        <div class="icon">Geen centrale server</div>
+        <h3>Elk endpoint is client én server</h3>
+        <p>Gecompromitteerde machines wisselen modelupdates uit via een peer-to-peer gossip-protocol. Er is geen adres om te blokkeren en geen server om neer te halen.</p>
+      </div>
+      <div class="threat-card">
+        <div class="icon">Geen signature</div>
+        <h3>De payload is generieke ML-code</h3>
+        <p>Modelgewichten en runtime-bibliotheken matchen geen enkel bekend malware-patroon — het zijn dezelfde bestanden als bij legitiem AI-gebruik.</p>
+      </div>
+      <div class="threat-card">
+        <div class="icon">Zelfversterkend</div>
+        <h3>Groei maakt het sterker, niet zwakker</h3>
+        <p>Hoe meer besmette endpoints, hoe accurater het gezamenlijke model wordt — een economische prikkel tot verspreiding die klassieke botnets niet hebben.</p>
+      </div>
+      <div class="threat-card">
+        <div class="icon">Onzichtbaar voor SOC's</div>
+        <h3>Bestaand gereedschap dekt dit niet</h3>
+        <p>Shadow-AI-detectie kijkt naar cloud-API's, EDR naar bekende malware-gedrag. Geen van beide is gebouwd om lokale, gedistribueerde LLM-inferentie te herkennen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="architectuur">
+  <div class="wrap">
+    <h2>Vijf lagen, één correlatie</h2>
+    <p class="section-intro">Elke laag bewaakt een ander technisch signaal. Geen enkele laag is op zichzelf voldoende — de kracht zit in de combinatie.</p>
+    <div class="layers" id="layerList"></div>
+  </div>
+</section>
+
+<section id="reis">
+  <div class="wrap">
+    <h2>De reis: van dreigingsanalyse tot productie</h2>
+    <p class="section-intro">Dit systeem is niet in één keer ontworpen. Elke stap volgde uit wat de vorige stap blootlegde.</p>
+    <div class="timeline" id="timelineList"></div>
+  </div>
+</section>
+
+<section id="bewijs">
+  <div class="wrap">
+    <h2>Bewijs, niet beweringen</h2>
+    <p class="section-intro">Elke laag is getest tegen zowel aanvalssimulaties als negatieve controles — legitiem gebruik dat nooit ten onrechte als dreiging gemarkeerd mag worden.</p>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num">140</div><div class="lbl">Score bij 4 gelijktijdige signalen (drempel: 40)</div></div>
+      <div class="stat-card"><div class="num">&lt;10</div><div class="lbl">Score bij legitiem eigen gebruik, consequent</div></div>
+      <div class="stat-card"><div class="num">10.000</div><div class="lbl">Licentiecodes gegenereerd én geverifieerd</div></div>
+      <div class="stat-card"><div class="num">12+</div><div class="lbl">Praktijkbugs gevonden en gefixt op productiehardware</div></div>
+    </div>
+    <table class="bug-table">
+      <tr><th>Vals-positief gevonden in de praktijk</th><th>Waarom het geen alarm werd</th></tr>
+      <tr><td>Steam-videobestanden (hoge entropie, net als gekwantiseerde modellen)</td><td>Slechts 1 domein vuurde — geen escalatie zonder correlatie</td></tr>
+      <tr><td>SSDP/UPnP-netwerkverkeer (regelmatige heartbeat, net als gossip)</td><td>Structureel uitgesloten na herkenning; ook hiervoor gold: nooit KRITIEK op één signaal</td></tr>
+      <tr><td>66 normale browse-verbindingen per uur ("hoge peer-churn")</td><td>Churn-telling herzien: alleen peers met een tweede signaal tellen mee</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="documenten">
+  <div class="wrap">
+    <h2>Documentatie</h2>
+    <p class="section-intro">Vier documenten, van bestuurlijk tot volledig technisch. Vul deze pagina zelf aan naarmate het project doorgroeit.</p>
+    <div class="doc-grid">
+      <div class="doc-card">
+        <span class="doc-type">Eén pagina</span>
+        <h3>One-pager</h3>
+        <p>Het project in het kort: dreiging, oplossing, bewezen resultaat, status. Voor een snel overzicht of ter introductie.</p>
+      </div>
+      <div class="doc-card">
+        <span class="doc-type">Voor management</span>
+        <h3>Managementsamenvatting</h3>
+        <p>Niet-technische samenvatting van situatie, aanpak, resultaat en aanbevolen vervolgstappen.</p>
+      </div>
+      <div class="doc-card">
+        <span class="doc-type">Volledig technisch</span>
+        <h3>Whitepaper 2.0</h3>
+        <p>Architectuur, alle vijf lagen, correlatie-engine, praktijktest, licentiesysteem, Windows-uitbreiding en projectstatistieken.</p>
+      </div>
+      <div class="doc-card">
+        <span class="doc-type">Installatie</span>
+        <h3>Productiegids</h3>
+        <p>Stapsgewijze installatie op Linux, inclusief systemd-services, netflow-pijplijn en logrotate.</p>
+      </div>
+      <div class="doc-card">
+        <span class="doc-type">Installatie</span>
+        <h3>Windows-gids</h3>
+        <p>Eerste Windows-versie: vereisten, gebruik, en de bekende beperkingen t.o.v. de Linux-productieversie.</p>
+      </div>
+      <div class="doc-card">
+        <span class="doc-type">Verhalend</span>
+        <h3>Het verhaal (geanimeerd)</h3>
+        <p>Dezelfde reis, maar dan verteld als donker sprookje — de dreiging, de bouw, de bescherming.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <h2>Status &amp; volgende stappen</h2>
+    <div class="status-grid" id="statusList"></div>
+
+    <div class="story-banner" style="margin-top:32px;">
+      <div>
+        <h3>Wil je het verhaal beleven in plaats van lezen?</h3>
+        <p>Dezelfde reis — de dreiging, de bouw, de bescherming — verteld als geanimeerd donker sprookje.</p>
+      </div>
+      <a href="verhaal.html" class="btn">Open het verhaal →</a>
+    </div>
+
+    <div class="note-box" style="margin-top:24px;">
+      <strong>Deze pagina is bedoeld om aangevuld te worden.</strong> Ontbreekt er iets — een nieuwe testresultaat, een gecorrigeerde aanname, een volgende projectfase? Werk de secties hierboven bij, of voeg een nieuwe sectie toe. De structuur (dreiging → architectuur → reis → bewijs → documenten → status) is bewust generiek genoeg om mee te groeien.
+    </div>
+  </div>
+</section>
+
+<footer>
+  LLM-Botnet Detectiesysteem — Projectdocumentatie · Augustus 2026
+</footer>
+
+<script>
+  const SIGNALS = [
+    { id: "l1", name: "Laag 1 — Bestand/Proces", score: 3 },
+    { id: "l2", name: "Laag 2 — Netflow", score: 10.8 },
+    { id: "l3", name: "Laag 3 — Kernel-Agent", score: 10 },
+    { id: "l4", name: "Laag 4 — GPU", score: 7 },
+    { id: "l5", name: "Laag 5 — TPM (hard fail)", score: 10, hardFail: true },
+  ];
+
+  const MULTIPLIER = { 0: 1.0, 1: 1.0, 2: 1.6, 3: 2.4, 4: 3.5, 5: 5.0 };
+
+  let active = new Set(["l2", "l3"]); // startpositie: toont al meteen iets interessants
+
+  function renderSignals() {
+    const el = document.getElementById("signals");
+    el.innerHTML = SIGNALS.map(s => `
+      <div class="signal-toggle ${active.has(s.id) ? 'active' : ''}" data-id="${s.id}" role="button" tabindex="0" aria-pressed="${active.has(s.id)}">
+        <span class="name">${s.name}</span>
+        <span style="display:flex; align-items:center; gap:10px;">
+          <span class="score">score ${s.score}</span>
+          <span class="switch"></span>
+        </span>
+      </div>
+    `).join("");
+    el.querySelectorAll(".signal-toggle").forEach(node => {
+      node.addEventListener("click", () => toggle(node.dataset.id));
+      node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(node.dataset.id); } });
+    });
+  }
+
+  function toggle(id) {
+    if (active.has(id)) active.delete(id); else active.add(id);
+    renderSignals();
+    updateVerdict();
+  }
+
+  function updateVerdict() {
+    const firing = SIGNALS.filter(s => active.has(s.id));
+    const base = firing.reduce((sum, s) => sum + s.score, 0);
+    const mult = MULTIPLIER[firing.length] ?? 5.0;
+    let score = Math.round(base * mult * 10) / 10;
+    const hardFail = firing.some(s => s.hardFail);
+    if (hardFail && firing.length >= 2) score = Math.max(score, 100);
+
+    let label, color;
+    if (score >= 100) { label = "KRITIEK — CRYPTOGRAFISCH BEWEZEN"; color = "#C0392B"; }
+    else if (score >= 40) { label = "KRITIEK"; color = "#C0392B"; }
+    else if (score >= 15) { label = "HOOG"; color = "#C2740A"; }
+    else if (score >= 5) { label = "MIDDEL"; color = "#C2740A"; }
+    else { label = "LAAG"; color = "#22B896"; }
+
+    const scoreEl = document.getElementById("verdictScore");
+    scoreEl.textContent = score.toFixed(1);
+    scoreEl.style.color = color;
+    const labelEl = document.getElementById("verdictLabel");
+    labelEl.textContent = label;
+    labelEl.style.color = color;
+    labelEl.style.background = color + "22";
+    labelEl.style.border = "1px solid " + color + "55";
+    document.getElementById("verdictFormula").textContent =
+      `basis ${base.toFixed(1)} × multiplier ${mult.toFixed(1)}` + (hardFail && firing.length >= 2 ? "  (+ TPM hard-fail)" : "");
+  }
+
+  renderSignals();
+  updateVerdict();
+
+  // ── Layers ──
+  const LAYERS = [
+    { num: "01", name: "Bestand/Proces/Netwerk", desc: "GGUF/SafeTensors-signaturen, entropieprofiel, geladen ML-bibliotheken, verdachte poorten.", file: "llm_botnet_scanner.py" },
+    { num: "02", name: "Netflow Gossip", desc: "Grote peer-to-peer-blobs, machine-precisie heartbeat-regelmaat, peer-churn.", file: "netflow_gossip_detector.py" },
+    { num: "03", name: "Realtime Kernel-Agent", desc: "Dynamische library-loads, acute geheugengroei, verdachte procesafstamming.", file: "realtime_kernel_agent.py" },
+    { num: "04", name: "GPU-Fingerprinting", desc: "Memory-bandwidth-bound profiel, autoregressive burst-ritme, stabiele VRAM-allocatie.", file: "gpu_fingerprint_detector.py" },
+    { num: "05", name: "TPM-Attestatie", desc: "Cryptografische model-autorisatie — signeren, intrekken, verifiëren.", file: "tpm_model_attestation.py" },
+  ];
+  document.getElementById("layerList").innerHTML = LAYERS.map(l => `
+    <div class="layer-row">
+      <div class="layer-num">${l.num}</div>
+      <div class="layer-name">${l.name}</div>
+      <div class="layer-desc">${l.desc}</div>
+      <div class="layer-file">${l.file}</div>
+    </div>
+  `).join("");
+
+  // ── Timeline ──
+  const TIMELINE = [
+    { tag: "Aanleiding", title: "Een AI-agent ontvlucht zijn sandbox", body: "Berichtgeving over een autonome agent die via aaneengeschakelde zero-days een productiesysteem binnendringt, roept de vraag op: wat als dit zich gedistribueerd en ongemerkt voordoet?" },
+    { tag: "Onderzoek", title: "Het dreigingsmodel wordt scherp", body: "Onderzoek naar zelf-propagerende, LLM-versterkte malware leidt tot een concreet model: een gossip-gebaseerd LLM-botnet zonder centrale server." },
+    { tag: "Bouw", title: "Vijf lagen, stap voor stap getest", body: "Elke laag wordt los gebouwd en tegen zowel aanvalssimulaties als negatieve controles getest, vóór de volgende laag begint." },
+    { tag: "Interface", title: "Een dashboard, geen command line", body: "Een web-GUI met live status, resultatengeschiedenis en automatische correlatie maakt het systeem bedienbaar zonder technische kennis." },
+    { tag: "Productie", title: "De echte machine test de theorie", body: "Installatie op een echte productiemachine legt praktijkproblemen bloot die een ontwikkelomgeving niet laat zien — elk gevonden, gereproduceerd, en gefixt." },
+    { tag: "Verspreiding", title: "Een licentiesysteem, volledig offline", body: "Cryptografische licentiecodes maken gecontroleerde verspreiding mogelijk zonder centrale server — 10.000 codes gegenereerd en stuk voor stuk geverifieerd." },
+    { tag: "Uitbreiding", title: "De eerste stap naar Windows", body: "Vier van de vijf lagen plus de GUI worden cross-platform gemaakt, met dezelfde detectielogica grondig getest vóór de uitbreiding naar een nieuw platform." },
+  ];
+  document.getElementById("timelineList").innerHTML = TIMELINE.map(t => `
+    <div class="tl-item">
+      <span class="tl-tag">${t.tag}</span>
+      <h3>${t.title}</h3>
+      <p>${t.body}</p>
+    </div>
+  `).join("");
+
+  // ── Status ──
+  const STATUS = [
+    { color: "#22B896", title: "Linux — productie", body: "Gebouwd, getest, draait 24/7 op productiehardware." },
+    { color: "#22B896", title: "Web-dashboard", body: "Live-status, resultatengeschiedenis, automatische correlatie." },
+    { color: "#22B896", title: "Licentiesysteem", body: "10.000/10.000 gegenereerde codes geverifieerd." },
+    { color: "#C2740A", title: "Windows-versie", body: "Eerste versie gebouwd; validatie op echte hardware volgt." },
+    { color: "#C2740A", title: "Netflow op Windows", body: "Nog niet gebouwd — vraagt een andere technische aanpak." },
+    { color: "#4C7FD6", title: "Documentatie", body: "Whitepaper, gidsen, one-pager, deze site — actief onderhouden." },
+  ];
+  document.getElementById("statusList").innerHTML = STATUS.map(s => `
+    <div class="status-row">
+      <span class="status-dot" style="background:${s.color}"></span>
+      <div class="txt"><h4>${s.title}</h4><p>${s.body}</p></div>
+    </div>
+  `).join("");
+</script>
+
+</body>
+</html>
